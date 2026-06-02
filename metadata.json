@@ -1,0 +1,6 @@
+{
+  "name": "Learning Adventures",
+  "description": "Educational platform for kids with gamified quizzes in Math, English, and Mandarin.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
