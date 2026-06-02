@@ -53,6 +53,17 @@ async function startServer() {
         date TEXT,
         FOREIGN KEY(kid_id) REFERENCES kids(id)
       );
+
+      CREATE TABLE IF NOT EXISTS story_progress (
+        kid_id TEXT,
+        subject TEXT,
+        unlocked_level INTEGER DEFAULT 1,
+        last_completed_level INTEGER DEFAULT 0,
+        total_stars INTEGER DEFAULT 0,
+        updated_at TEXT,
+        PRIMARY KEY (kid_id, subject),
+        FOREIGN KEY(kid_id) REFERENCES kids(id)
+      );
     `);
 
     const app = express();
@@ -210,6 +221,89 @@ async function startServer() {
     await db.run('INSERT INTO scores (id, kid_id, subject, difficulty, score, total, date) VALUES (?, ?, ?, ?, ?, ?, ?)', id, kidId, subject, difficulty, score, total, date);
     
     res.json({ id, kidId, subject, difficulty, score, total, date });
+  });
+
+  // Story Mode Routes
+  app.get("/api/story/progress", authMiddleware, async (req, res) => {
+    const parentId = (req as any).user.id;
+    const kidId = req.query.kidId as string | undefined;
+    if (!kidId) {
+      res.status(400).json({ error: "kidId is required" });
+      return;
+    }
+
+    const kid = await db.get('SELECT id FROM kids WHERE id = ? AND parent_id = ?', kidId, parentId);
+    if (!kid) {
+      res.status(404).json({ error: "Kid not found" });
+      return;
+    }
+
+    const rows = await db.all('SELECT kid_id, subject, unlocked_level, last_completed_level, total_stars, updated_at FROM story_progress WHERE kid_id = ?', kidId);
+    res.json(rows);
+  });
+
+  app.post("/api/story/complete", authMiddleware, async (req, res) => {
+    const parentId = (req as any).user.id;
+    const { kidId, subject, level, stars } = req.body as { kidId?: string; subject?: string; level?: number; stars?: number };
+
+    if (!kidId || !subject || typeof level !== 'number' || typeof stars !== 'number') {
+      res.status(400).json({ error: "kidId, subject, level, stars are required" });
+      return;
+    }
+    if (!['Math', 'English', 'Mandarin'].includes(subject)) {
+      res.status(400).json({ error: "Invalid subject" });
+      return;
+    }
+    if (level < 1 || level > 50) {
+      res.status(400).json({ error: "Invalid level" });
+      return;
+    }
+    if (stars < 0 || stars > 3) {
+      res.status(400).json({ error: "Invalid stars" });
+      return;
+    }
+
+    const kid = await db.get('SELECT id FROM kids WHERE id = ? AND parent_id = ?', kidId, parentId);
+    if (!kid) {
+      res.status(404).json({ error: "Kid not found" });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const existing = await db.get(
+      'SELECT unlocked_level, last_completed_level, total_stars FROM story_progress WHERE kid_id = ? AND subject = ?',
+      kidId,
+      subject
+    ) as { unlocked_level?: number; last_completed_level?: number; total_stars?: number } | undefined;
+
+    const prevUnlocked = existing?.unlocked_level ?? 1;
+    const prevCompleted = existing?.last_completed_level ?? 0;
+    const prevStars = existing?.total_stars ?? 0;
+
+    const newCompleted = Math.max(prevCompleted, level);
+    const newUnlocked = Math.max(prevUnlocked, level + 1);
+    const newTotalStars = prevStars + stars;
+
+    await db.run(
+      `
+      INSERT INTO story_progress (kid_id, subject, unlocked_level, last_completed_level, total_stars, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(kid_id, subject) DO UPDATE SET
+        unlocked_level = excluded.unlocked_level,
+        last_completed_level = excluded.last_completed_level,
+        total_stars = excluded.total_stars,
+        updated_at = excluded.updated_at
+      `,
+      kidId,
+      subject,
+      newUnlocked,
+      newCompleted,
+      newTotalStars,
+      now
+    );
+
+    const row = await db.get('SELECT kid_id, subject, unlocked_level, last_completed_level, total_stars, updated_at FROM story_progress WHERE kid_id = ? AND subject = ?', kidId, subject);
+    res.json(row);
   });
 
   // Vite middleware for development
