@@ -86,7 +86,7 @@ const englishHardBank: Question[] = [
   { id: 'eh-2', text: 'Which is an adverb?', options: ['Quickly', 'House', 'Beautiful'], correctAnswer: 'Quickly' },
   { id: 'eh-3', text: 'Identify the preposition: The cat is under the table.', options: ['under', 'cat', 'table'], correctAnswer: 'under' },
   { id: 'eh-4', text: 'Meaning of "enormous"?', options: ['Very large', 'Very small', 'Angry'], correctAnswer: 'Very large' },
-  { id: 'eh-5', text: 'Plural of "Goose"?', options: ['Geese', 'Gooses', 'Geese'], correctAnswer: 'Geese' },
+  { id: 'eh-5', text: 'Plural of "Goose"?', options: ['Geese', 'Gooses', 'Geeses'], correctAnswer: 'Geese' },
   { id: 'eh-6', text: ' Past participle of "Eat"?', options: ['Eaten', 'Ate', 'Eating'], correctAnswer: 'Eaten' },
   { id: 'eh-7', text: 'Which is a conjunction?', options: ['And', 'Run', 'Blue'], correctAnswer: 'And' },
   { id: 'eh-8', text: 'Identify the pronoun: "He goes to school"', options: ['He', 'goes', 'school'], correctAnswer: 'He' },
