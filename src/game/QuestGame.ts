@@ -14,6 +14,7 @@ export type QuestGameOptions = {
   /** Return current unlocked_level for a subject. */
   getUnlockedLevel: (subject: Subject) => number;
   onNpcInteract: (e: QuestGameNpcInteract) => void;
+  onLevelChange?: (level: number) => void;
 };
 
 type GateKey = Subject;
@@ -56,10 +57,45 @@ class WorldScene extends Phaser.Scene {
 
   private options: QuestGameOptions;
   private nearNpc: QuestNpcId | null = null;
+  private currentLevel = 1;
+  private transitioning = false;
 
   constructor(options: QuestGameOptions) {
     super('WorldScene');
     this.options = options;
+  }
+
+  init(data?: { level?: number }) {
+    this.currentLevel = data?.level || 1;
+    this.transitioning = false;
+  }
+
+  private makeRandom(seed: number) {
+    let s = seed;
+    return () => {
+      const x = Math.sin(s++) * 10000;
+      return x - Math.floor(x);
+    };
+  }
+
+  private isProtected(x: number): boolean {
+    // Start zone
+    if (x >= 0 && x <= 300) return true;
+    // Math NPC
+    if (x >= 350 && x <= 490) return true;
+    // Math Gate
+    if (x >= 600 && x <= 700) return true;
+    // English NPC
+    if (x >= 910 && x <= 1050) return true;
+    // English Gate
+    if (x >= 1160 && x <= 1280) return true;
+    // Mandarin NPC
+    if (x >= 1470 && x <= 1610) return true;
+    // Mandarin Gate
+    if (x >= 1720 && x <= 1840) return true;
+    // Portal
+    if (x >= 1990 && x <= 2200) return true;
+    return false;
   }
 
   preload() {
@@ -162,6 +198,24 @@ class WorldScene extends Phaser.Scene {
     lock.fillRect(15, 21, 2, 6);
     lock.generateTexture('tex_gate', 32, 32);
     lock.destroy();
+
+    // Portal
+    if (this.textures.exists('tex_portal')) {
+      try {
+        this.textures.remove('tex_portal');
+      } catch {
+        // ignore
+      }
+    }
+    const portalG = this.add.graphics();
+    portalG.fillStyle(0x7c3aed, 0.9); // violet-600
+    portalG.fillEllipse(20, 30, 20, 30);
+    portalG.lineStyle(3, 0xa78bfa, 1); // violet-300
+    portalG.strokeEllipse(20, 30, 20, 30);
+    portalG.fillStyle(0xede9fe, 0.7); // white swirl center
+    portalG.fillEllipse(20, 30, 10, 18);
+    portalG.generateTexture('tex_portal', 40, 60);
+    portalG.destroy();
   }
 
   create() {
@@ -185,6 +239,9 @@ class WorldScene extends Phaser.Scene {
     const sky = this.add.tileSprite(0, 0, 2200, 720, 'tex_sky').setOrigin(0, 0);
     sky.setScrollFactor(0.2, 0.2);
 
+    // Notify level change to React
+    this.options.onLevelChange?.(this.currentLevel);
+
     // Ground/platforms
     const platforms = this.physics.add.staticGroup();
     const mkPlatform = (x: number, y: number, w: number, h: number) => {
@@ -193,11 +250,66 @@ class WorldScene extends Phaser.Scene {
       platforms.add(tile);
       return tile;
     };
-    mkPlatform(1100, 700, 2200, 40);
-    mkPlatform(400, 560, 380, 30);
-    mkPlatform(900, 460, 420, 30);
-    mkPlatform(1500, 520, 420, 30);
-    mkPlatform(1900, 420, 320, 30);
+
+    // Procedural Generation using level-based seed
+    const rand = this.makeRandom(this.currentLevel * 1000 + 42);
+
+    // 1. Procedural ground with gaps (guaranteeing protected areas)
+    let consecutiveGaps = 0;
+    for (let x = 25; x < 2200; x += 50) {
+      let placeGround = true;
+      if (!this.isProtected(x)) {
+        if (consecutiveGaps < 2 && rand() < 0.2) {
+          placeGround = false;
+        }
+      }
+
+      if (placeGround) {
+        mkPlatform(x, 700, 50, 40);
+        consecutiveGaps = 0;
+      } else {
+        consecutiveGaps++;
+      }
+    }
+
+    // 2. Procedural primary platform coordinates (under NPCs / portal)
+    const mathPlatX = 380 + rand() * 40; 
+    const mathPlatW = 300 + rand() * 100;
+    const mathPlatY = 540 + rand() * 40;
+    mkPlatform(mathPlatX, mathPlatY, mathPlatW, 30);
+
+    const engPlatX = 880 + rand() * 40;
+    const engPlatW = 340 + rand() * 100;
+    const engPlatY = 440 + rand() * 40;
+    mkPlatform(engPlatX, engPlatY, engPlatW, 30);
+
+    const manPlatX = 1480 + rand() * 40;
+    const manPlatW = 340 + rand() * 100;
+    const manPlatY = 500 + rand() * 40;
+    mkPlatform(manPlatX, manPlatY, manPlatW, 30);
+
+    const portPlatX = 1850 + rand() * 100;
+    const portPlatW = 250 + rand() * 100;
+    const portPlatY = 400 + rand() * 40;
+    mkPlatform(portPlatX, portPlatY, portPlatW, 30);
+
+    // 3. Helper platforms in gap-prone areas
+    const helpers = [
+      { min: 300, max: 350 },   // Between Start and Math NPC
+      { min: 500, max: 580 },   // Between Math NPC and Math Gate
+      { min: 720, max: 860 },   // Between Math Gate and English NPC
+      { min: 1060, max: 1140 }, // Between English NPC and English Gate
+      { min: 1300, max: 1440 }, // Between English Gate and Mandarin NPC
+      { min: 1620, max: 1700 }, // Between Mandarin NPC and Mandarin Gate
+      { min: 1840, max: 1960 }, // Between Mandarin Gate and Portal
+    ];
+
+    helpers.forEach((h) => {
+      const w = 80 + rand() * 60;
+      const x = h.min + rand() * (h.max - h.min);
+      const y = 480 + rand() * 80;
+      mkPlatform(x, y, w, 30);
+    });
 
     // Player (placeholder)
     const playerSprite = this.physics.add.sprite(120, 620, 'tex_player');
@@ -225,11 +337,16 @@ class WorldScene extends Phaser.Scene {
       return npc;
     };
 
-    mkNpc('Math', 420, 518, 0x3b82f6);
-    mkNpc('English', 980, 418, 0x22c55e);
-    mkNpc('Mandarin', 1540, 478, 0xef4444);
+    // Place NPCs exactly on top of their platforms
+    const mathNpcY = (mathPlatY - 15) - 27;
+    const engNpcY = (engPlatY - 15) - 27;
+    const manNpcY = (manPlatY - 15) - 27;
 
-    // Gates: each subject has a small “barrier” that disappears once level 1 is completed (unlocked_level >= 2).
+    mkNpc('Math', mathPlatX + 20, mathNpcY, 0x3b82f6);
+    mkNpc('English', engPlatX + 80, engNpcY, 0x22c55e);
+    mkNpc('Mandarin', manPlatX + 40, manNpcY, 0xef4444);
+
+    // Gates: each subject has a small “barrier” that disappears once the subject is completed on current level
     const mkGate = (subject: GateKey, x: number) => {
       const gate = this.add.rectangle(x, 680, 26, 680, 0x111827).setOrigin(0.5, 1);
       gate.setVisible(false);
@@ -251,6 +368,44 @@ class WorldScene extends Phaser.Scene {
     for (const gate of this.gateBodies.values()) {
       this.physics.add.collider(this.player, gate as any);
     }
+
+    // Glowing Purple Exit Portal
+    const portalSprite = this.physics.add.sprite(2140, 650, 'tex_portal');
+    this.physics.add.existing(portalSprite, true);
+    portalSprite.setDepth(4);
+
+    // Swirling pulse animation
+    this.tweens.add({
+      targets: portalSprite,
+      scaleX: 1.15,
+      scaleY: 1.15,
+      alpha: 0.8,
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+
+    // Check player reach portal
+    this.physics.add.overlap(this.player, portalSprite, () => {
+      const mathOpen = this.options.getUnlockedLevel('Math') > this.currentLevel;
+      const engOpen = this.options.getUnlockedLevel('English') > this.currentLevel;
+      const manOpen = this.options.getUnlockedLevel('Mandarin') > this.currentLevel;
+
+      if (mathOpen && engOpen && manOpen) {
+        if (!this.transitioning) {
+          this.transitioning = true;
+          this.player.body.setEnable(false);
+          this.cameras.main.fadeOut(500, 92, 76, 229);
+          this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+            this.scene.restart({ level: this.currentLevel + 1 });
+          });
+        }
+      } else {
+        this.hintText.setText("Solve all quests to activate the portal!");
+        this.hintText.setVisible(true);
+      }
+    });
 
     // Camera follow
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
@@ -279,11 +434,39 @@ class WorldScene extends Phaser.Scene {
       })
       .setScrollFactor(0)
       .setDepth(10);
+
+    // Level HUD Indicator
+    this.add
+      .text(this.scale.width - 16, 16, `Level ${this.currentLevel}`, {
+        fontFamily: 'system-ui',
+        fontSize: '18px',
+        fontStyle: 'bold',
+        color: '#5c4ce5',
+        backgroundColor: 'rgba(255,255,255,0.85)',
+        padding: { x: 12, y: 6 },
+      })
+      .setOrigin(1, 0)
+      .setScrollFactor(0)
+      .setDepth(10);
   }
 
   update() {
     const body = this.player.body as Phaser.Physics.Arcade.Body;
     const now = this.time.now;
+
+    // Out-of-bounds fall check
+    if (this.player.y > 740) {
+      this.player.y = 620;
+      this.player.x = 120;
+      body.setVelocity(0, 0);
+      body.setAcceleration(0, 0);
+      this.cameras.main.flash(500, 255, 0, 0);
+    }
+
+    // Hide portal hint if player walks away
+    if (this.player.x < 2000 && this.hintText.text.includes("portal")) {
+      this.hintText.setVisible(false);
+    }
 
     // Reset jumps when grounded
     if (body.blocked.down) {
@@ -362,7 +545,7 @@ class WorldScene extends Phaser.Scene {
     if (!gate) return;
     const sprite = this.gateSprites.get(subject);
     const unlockedLevel = this.options.getUnlockedLevel(subject);
-    const isOpen = unlockedLevel >= 2; // level 1 completed unlocks level 2
+    const isOpen = unlockedLevel > this.currentLevel;
     gate.setVisible(false);
     sprite?.setVisible(!isOpen);
     (gate.body as Phaser.Physics.Arcade.StaticBody).enable = !isOpen;
