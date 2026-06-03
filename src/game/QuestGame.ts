@@ -149,14 +149,19 @@ class WorldScene extends Phaser.Scene {
     mkNpc('tex_npc_english', 0x22c55e);
     mkNpc('tex_npc_mandarin', 0xef4444);
 
-    // Gate
-    const gate = this.add.graphics();
-    gate.fillStyle(0x111827, 1);
-    gate.fillRoundedRect(0, 0, 26, 680, 10);
-    gate.lineStyle(2, 0x334155, 1);
-    gate.strokeRoundedRect(1, 1, 24, 678, 10);
-    gate.generateTexture('tex_gate', 26, 680);
-    gate.destroy();
+    // Padlock
+    const lock = this.add.graphics();
+    lock.lineStyle(3, 0x475569, 1);
+    lock.strokeCircle(16, 12, 8);
+    lock.fillStyle(0xd97706, 1);
+    lock.fillRoundedRect(6, 14, 20, 18, 4);
+    lock.lineStyle(2, 0xb45309, 1);
+    lock.strokeRoundedRect(6, 14, 20, 18, 4);
+    lock.fillStyle(0x1e293b, 1);
+    lock.fillCircle(16, 21, 3);
+    lock.fillRect(15, 21, 2, 6);
+    lock.generateTexture('tex_gate', 32, 32);
+    lock.destroy();
   }
 
   create() {
@@ -184,6 +189,7 @@ class WorldScene extends Phaser.Scene {
     const platforms = this.physics.add.staticGroup();
     const mkPlatform = (x: number, y: number, w: number, h: number) => {
       const tile = this.add.tileSprite(x, y, w, h, 'tex_platform').setOrigin(0.5, 0.5);
+      this.physics.add.existing(tile, true);
       platforms.add(tile);
       return tile;
     };
@@ -226,7 +232,8 @@ class WorldScene extends Phaser.Scene {
     // Gates: each subject has a small “barrier” that disappears once level 1 is completed (unlocked_level >= 2).
     const mkGate = (subject: GateKey, x: number) => {
       const gate = this.add.rectangle(x, 680, 26, 680, 0x111827).setOrigin(0.5, 1);
-      const sprite = this.add.sprite(x, 680, 'tex_gate').setOrigin(0.5, 1);
+      gate.setVisible(false);
+      const sprite = this.add.sprite(x, 640, 'tex_gate').setOrigin(0.5, 0.5);
       sprite.setDepth(3);
       this.physics.add.existing(gate, true);
       this.gateBodies.set(subject, gate);
@@ -356,7 +363,7 @@ class WorldScene extends Phaser.Scene {
     const sprite = this.gateSprites.get(subject);
     const unlockedLevel = this.options.getUnlockedLevel(subject);
     const isOpen = unlockedLevel >= 2; // level 1 completed unlocks level 2
-    gate.setVisible(!isOpen);
+    gate.setVisible(false);
     sprite?.setVisible(!isOpen);
     (gate.body as Phaser.Physics.Arcade.StaticBody).enable = !isOpen;
   }
