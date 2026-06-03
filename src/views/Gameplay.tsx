@@ -111,7 +111,7 @@ export function Gameplay({
   const endGame = (state: 'gameover' | 'completed') => {
     setGameState(state);
     const totalQ = questions.length;
-    const finalScore = state === 'gameover' ? score : (score + (isCorrect ? 1 : 0));
+    const finalScore = score;
     
     // Save to store
     if (activeKidId) {
