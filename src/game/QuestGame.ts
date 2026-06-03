@@ -152,10 +152,10 @@ class WorldScene extends Phaser.Scene {
     // Gate
     const gate = this.add.graphics();
     gate.fillStyle(0x111827, 1);
-    gate.fillRoundedRect(0, 0, 26, 140, 10);
+    gate.fillRoundedRect(0, 0, 26, 680, 10);
     gate.lineStyle(2, 0x334155, 1);
-    gate.strokeRoundedRect(1, 1, 24, 138, 10);
-    gate.generateTexture('tex_gate', 26, 140);
+    gate.strokeRoundedRect(1, 1, 24, 678, 10);
+    gate.generateTexture('tex_gate', 26, 680);
     gate.destroy();
   }
 
@@ -219,14 +219,14 @@ class WorldScene extends Phaser.Scene {
       return npc;
     };
 
-    mkNpc('Math', 420, 500, 0x3b82f6);
-    mkNpc('English', 980, 400, 0x22c55e);
-    mkNpc('Mandarin', 1540, 460, 0xef4444);
+    mkNpc('Math', 420, 518, 0x3b82f6);
+    mkNpc('English', 980, 418, 0x22c55e);
+    mkNpc('Mandarin', 1540, 478, 0xef4444);
 
     // Gates: each subject has a small “barrier” that disappears once level 1 is completed (unlocked_level >= 2).
     const mkGate = (subject: GateKey, x: number) => {
-      const gate = this.add.rectangle(x, 640, 26, 140, 0x111827).setOrigin(0.5, 1);
-      const sprite = this.add.sprite(x, 640, 'tex_gate').setOrigin(0.5, 1);
+      const gate = this.add.rectangle(x, 680, 26, 680, 0x111827).setOrigin(0.5, 1);
+      const sprite = this.add.sprite(x, 680, 'tex_gate').setOrigin(0.5, 1);
       sprite.setDepth(3);
       this.physics.add.existing(gate, true);
       this.gateBodies.set(subject, gate);
