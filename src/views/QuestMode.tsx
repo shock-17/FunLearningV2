@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import type { Subject } from '../store/useAppStore';
 import { useAppStore } from '../store/useAppStore';
 import { Header } from '../components/Header';
@@ -27,9 +27,9 @@ export function QuestMode({ onBack }: { onBack: () => void }) {
     if (activeKidId) fetchStoryProgress(activeKidId);
   }, [activeKidId]);
 
-  const getUnlockedLevel = useMemo(() => {
-    return (subject: Subject) => storyProgress[subject]?.unlocked_level ?? 1;
-  }, [storyProgress]);
+  const getUnlockedLevel = useCallback((subject: Subject) => {
+    return useAppStore.getState().storyProgress[subject]?.unlocked_level ?? 1;
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
