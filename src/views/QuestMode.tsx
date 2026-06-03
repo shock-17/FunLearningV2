@@ -22,6 +22,7 @@ export function QuestMode({ onBack }: { onBack: () => void }) {
 
   const [activeNpc, setActiveNpc] = useState<Subject | null>(null);
   const [showTools, setShowTools] = useState(false);
+  const [questLevel, setQuestLevel] = useState(1);
 
   useEffect(() => {
     if (activeKidId) fetchStoryProgress(activeKidId);
@@ -45,6 +46,9 @@ export function QuestMode({ onBack }: { onBack: () => void }) {
         getUnlockedLevel,
         onNpcInteract: (e: QuestNpcInteract) => {
           setActiveNpc(e.npcId);
+        },
+        onLevelChange: (lvl: number) => {
+          setQuestLevel(lvl);
         },
       });
       gameRef.current = game;
@@ -102,7 +106,7 @@ export function QuestMode({ onBack }: { onBack: () => void }) {
 
       <main className="max-w-6xl mx-auto px-4 mt-8">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-          <h1 className="text-3xl md:text-4xl font-extrabold text-[#5c4ce5] mb-2">Quest World</h1>
+          <h1 className="text-3xl md:text-4xl font-extrabold text-[#5c4ce5] mb-2">Quest World • Level {questLevel}</h1>
           <p className="text-slate-600 font-medium">
             Walk up to an NPC and press <span className="font-extrabold">E</span> to get a quest. Pass to unlock the gate.
           </p>
@@ -122,7 +126,7 @@ export function QuestMode({ onBack }: { onBack: () => void }) {
       {activeNpc && (
         <QuestDialog
           subject={activeNpc}
-          difficulty="Easy"
+          difficulty={questLevel === 1 ? 'Easy' : questLevel === 2 ? 'Medium' : 'Hard'}
           questionCount={7}
           passPercent={0.6}
           onClose={() => setActiveNpc(null)}
@@ -130,9 +134,8 @@ export function QuestMode({ onBack }: { onBack: () => void }) {
             setActiveNpc(null);
             if (!passed) return;
 
-            // MVP: completing the NPC quest counts as story level 1 for that subject.
             const stars = computeStars(score, total, 0.6);
-            await completeStoryLevel({ kidId: activeKidId, subject: activeNpc, level: 1, stars });
+            await completeStoryLevel({ kidId: activeKidId, subject: activeNpc, level: questLevel, stars });
             await fetchStoryProgress(activeKidId);
           }}
         />
