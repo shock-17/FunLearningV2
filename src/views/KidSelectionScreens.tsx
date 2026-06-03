@@ -38,14 +38,14 @@ export function KidSelectionScreens({
             <h2 className="text-4xl font-extrabold text-center text-[#5c4ce5] mb-12 drop-shadow-sm">Choose Your Subject!</h2>
             <div className="grid md:grid-cols-3 gap-6">
               {[
-                { s: 'Math' as Subject, ic: Calculator, cl: 'text-blue-500', bg: 'bg-blue-100', bgHover: 'hover:bg-blue-50' },
-                { s: 'English' as Subject, ic: BookOpen, cl: 'text-green-500', bg: 'bg-green-100', bgHover: 'hover:bg-green-50' },
-                { s: 'Mandarin' as Subject, ic: Globe, cl: 'text-red-500', bg: 'bg-red-100', bgHover: 'hover:bg-red-50' },
+                { s: 'Math' as Subject, ic: Calculator, cl: 'text-blue-500', bg: 'bg-blue-100', bgHover: 'hover:bg-blue-50', hoverBorder: 'hover:border-blue-200' },
+                { s: 'English' as Subject, ic: BookOpen, cl: 'text-green-500', bg: 'bg-green-100', bgHover: 'hover:bg-green-50', hoverBorder: 'hover:border-green-200' },
+                { s: 'Mandarin' as Subject, ic: Globe, cl: 'text-red-500', bg: 'bg-red-100', bgHover: 'hover:bg-red-50', hoverBorder: 'hover:border-red-200' },
               ].map(cfg => (
                 <Card 
                   key={cfg.s} 
                   onClick={() => onSelectSubject(cfg.s)}
-                  className={`flex flex-col items-center p-12 transition-colors ${cfg.bgHover} border-2 border-transparent hover:border-${cfg.cl.split('-')[1]}-200`}
+                  className={`flex flex-col items-center p-12 transition-colors ${cfg.bgHover} border-2 border-transparent ${cfg.hoverBorder}`}
                 >
                   <div className={`w-24 h-24 rounded-full ${cfg.bg} flex items-center justify-center mb-8 shadow-sm`}>
                     <cfg.ic className={`w-12 h-12 ${cfg.cl}`} />
