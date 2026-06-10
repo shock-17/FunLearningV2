@@ -216,7 +216,7 @@ async function startServer() {
     
     db.prepare('INSERT INTO scores (id, kid_id, subject, difficulty, score, total, date) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, kidId, subject, difficulty, score, total, date);
     
-    res.json({ id, kidId, subject, difficulty, score, total, date });
+    res.json({ id, kid_id: kidId, kidId, subject, difficulty, score, total, date });
   });
 
   // Story Mode Routes
