@@ -47,6 +47,7 @@ class WorldScene extends Phaser.Scene {
     'tex_npc_english',
     'tex_npc_mandarin',
     'tex_gate',
+    'tex_portal',
   ] as const;
 
   private npcBodies = new Map<QuestNpcId, Phaser.GameObjects.Rectangle>();
@@ -114,6 +115,7 @@ class WorldScene extends Phaser.Scene {
     this.load.image('tex_npc_english', '/quest-pack/npc_english.png');
     this.load.image('tex_npc_mandarin', '/quest-pack/npc_mandarin.png');
     this.load.image('tex_gate', '/quest-pack/gate.png');
+    this.load.image('tex_portal', '/quest-pack/portal.png');
   }
 
   private hasValidExternalPack(): boolean {
