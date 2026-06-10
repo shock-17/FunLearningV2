@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppStore, ChildAvatar, Subject } from '../store/useAppStore';
 import { Header } from '../components/Header';
 import { Button } from '../components/Button';
@@ -22,6 +22,11 @@ export function Dashboard({
   const [newName, setNewName] = useState('');
   const [newAvatar, setNewAvatar] = useState<ChildAvatar>('fox');
   const [viewMode, setViewMode] = useState<'graph' | 'table'>('graph');
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const handleCreate = () => {
     if (newName.trim()) {
@@ -174,18 +179,24 @@ export function Dashboard({
                   Play some games to see progress data!
                 </div>
               ) : viewMode === 'graph' ? (
-                <div className="h-[350px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={graphData} layout="vertical" margin={{ top: 0, right: 30, left: 40, bottom: 0 }}>
-                      <XAxis type="number" domain={[0, 100]} unit="%" />
-                      <YAxis dataKey="name" type="category" fontWeight="bold" />
-                      <Tooltip formatter={(val) => `${val}% Avg`} cursor={{fill: 'transparent'}} />
-                      <Legend />
-                      <Bar dataKey="Math" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={15} />
-                      <Bar dataKey="English" fill="#22c55e" radius={[0, 4, 4, 0]} barSize={15} />
-                      <Bar dataKey="Mandarin" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={15} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="h-[350px] w-full relative">
+                  {isMounted ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={graphData} layout="vertical" margin={{ top: 0, right: 30, left: 40, bottom: 0 }}>
+                        <XAxis type="number" domain={[0, 100]} unit="%" />
+                        <YAxis dataKey="name" type="category" fontWeight="bold" />
+                        <Tooltip formatter={(val) => `${val}% Avg`} cursor={{fill: 'transparent'}} />
+                        <Legend />
+                        <Bar dataKey="Math" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={15} />
+                        <Bar dataKey="English" fill="#22c55e" radius={[0, 4, 4, 0]} barSize={15} />
+                        <Bar dataKey="Mandarin" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={15} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full w-full bg-slate-50/50 flex items-center justify-center text-slate-400">
+                      Loading chart...
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
