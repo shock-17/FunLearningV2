@@ -593,8 +593,12 @@ export class QuestGame {
     this.phaserGame = new Phaser.Game({
       type: Phaser.AUTO,
       parent: opts.parent,
-      width: opts.width ?? 980,
-      height: opts.height ?? 560,
+      width: opts.width ?? 960,
+      height: opts.height ?? 540,
+      scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+      },
       backgroundColor: '#f4f3ff',
       physics: {
         default: 'arcade',
