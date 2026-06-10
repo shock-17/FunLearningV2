@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { playSound } from '../lib/audio';
 import { Header } from '../components/Header';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -53,7 +54,10 @@ export function StoryMap({
               key={s}
               variant={activeSubject === s ? 'secondary' : 'outline'}
               size="sm"
-              onClick={() => setActiveSubject(s)}
+              onClick={() => {
+                setActiveSubject(s);
+                playSound('click');
+              }}
             >
               {s}
             </Button>
@@ -68,7 +72,10 @@ export function StoryMap({
                 <Card
                   key={lvl.level}
                   className={locked ? 'opacity-70 cursor-not-allowed' : ''}
-                  onClick={locked ? undefined : () => onStartLevel({ subject: activeSubject, level: lvl.level })}
+                  onClick={locked ? undefined : () => {
+                    playSound('click');
+                    onStartLevel({ subject: activeSubject, level: lvl.level });
+                  }}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -101,7 +108,10 @@ export function StoryMap({
 
                   {!locked && (
                     <div className="mt-4">
-                      <Button className="w-full" onClick={() => onStartLevel({ subject: activeSubject, level: lvl.level })}>
+                      <Button className="w-full" onClick={() => {
+                        playSound('click');
+                        onStartLevel({ subject: activeSubject, level: lvl.level });
+                      }}>
                         Start Level {lvl.level}
                       </Button>
                     </div>
