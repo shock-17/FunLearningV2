@@ -60,6 +60,7 @@ class WorldScene extends Phaser.Scene {
   private nearNpc: QuestNpcId | null = null;
   private currentLevel = 1;
   private transitioning = false;
+  private portalHintShownAt = 0;
 
   constructor(options: QuestGameOptions) {
     super('WorldScene');
@@ -371,10 +372,17 @@ class WorldScene extends Phaser.Scene {
       this.physics.add.collider(this.player, gate as any);
     }
 
-    // Glowing Purple Exit Portal
-    const portalSprite = this.physics.add.sprite(2140, 650, 'tex_portal');
+    // Glowing Purple Exit Portal — place on top of the portal platform
+    const portalX = portPlatX + portPlatW * 0.5;
+    const portalY = (portPlatY - 15) - 32; // sit on top of platform surface
+    const portalSprite = this.add.sprite(portalX, portalY, 'tex_portal');
     this.physics.add.existing(portalSprite, true);
     portalSprite.setDepth(4);
+
+    // Add a "Next Level" label above the portal
+    this.add.text(portalX, portalY - 50, 'Portal', {
+      fontFamily: 'system-ui', fontSize: '14px', fontStyle: '700', color: '#7c3aed',
+    }).setOrigin(0.5, 1);
 
     // Swirling pulse animation
     this.tweens.add({
@@ -404,8 +412,13 @@ class WorldScene extends Phaser.Scene {
           });
         }
       } else {
-        this.hintText.setText("Solve all quests to activate the portal!");
-        this.hintText.setVisible(true);
+        // Throttle hint so it doesn't spam every frame
+        const now = this.time.now;
+        if (now - this.portalHintShownAt > 2000) {
+          this.portalHintShownAt = now;
+          this.hintText.setText("Solve all quests to activate the portal!");
+          this.hintText.setVisible(true);
+        }
       }
     });
 
