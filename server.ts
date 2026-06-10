@@ -1,8 +1,7 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import sqlite3 from "sqlite3";
-import { open, Database } from "sqlite";
+import BetterSqlite3 from "better-sqlite3";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
@@ -13,7 +12,7 @@ dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-default-key-for-learning-adventures';
 
-let db: Database;
+let db: BetterSqlite3.Database;
 
 async function startServer() {
   try {
@@ -21,14 +20,11 @@ async function startServer() {
       ? path.join('/tmp', 'database.sqlite') 
       : 'database.sqlite';
 
-    db = await open({
-      filename: dbPath,
-      driver: sqlite3.Database
-    });
-    await db.exec('PRAGMA journal_mode = WAL;');
+    db = new BetterSqlite3(dbPath);
+    db.pragma('journal_mode = WAL');
 
     // Initialize schema
-    await db.exec(`
+    db.exec(`
       CREATE TABLE IF NOT EXISTS parents (
         id TEXT PRIMARY KEY,
         email TEXT UNIQUE,
@@ -67,7 +63,7 @@ async function startServer() {
     `);
 
     const app = express();
-    const PORT = 3000;
+    const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
     app.use(express.json());
     app.use(cookieParser());
@@ -105,7 +101,7 @@ async function startServer() {
     try {
       const hashedPassword = await bcrypt.hash(password, 10);
       const id = crypto.randomUUID();
-      await db.run('INSERT INTO parents (id, email, password) VALUES (?, ?, ?)', id, email, hashedPassword);
+      db.prepare('INSERT INTO parents (id, email, password) VALUES (?, ?, ?)').run(id, email, hashedPassword);
       
       const token = jwt.sign({ id, email }, JWT_SECRET, { expiresIn: '7d' });
       res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
@@ -123,7 +119,7 @@ async function startServer() {
     const { email, password } = req.body;
     
     try {
-      const parent = await db.get('SELECT * FROM parents WHERE email = ?', email);
+      const parent = db.prepare('SELECT * FROM parents WHERE email = ?').get(email) as any;
       
       if (!parent || !(await bcrypt.compare(password, parent.password))) {
         res.status(401).json({ error: "Invalid credentials" });
@@ -149,13 +145,13 @@ async function startServer() {
   });
 
   // Kids Routes
-  app.get("/api/kids", authMiddleware, async (req, res) => {
+  app.get("/api/kids", authMiddleware, (req, res) => {
     const parentId = (req as any).user.id;
-    const kids = await db.all('SELECT * FROM kids WHERE parent_id = ?', parentId);
+    const kids = db.prepare('SELECT * FROM kids WHERE parent_id = ?').all(parentId);
     res.json(kids);
   });
 
-  app.post("/api/kids", authMiddleware, async (req, res) => {
+  app.post("/api/kids", authMiddleware, (req, res) => {
     const parentId = (req as any).user.id;
     const { name, avatar } = req.body;
     
@@ -164,26 +160,26 @@ async function startServer() {
       return;
     }
 
-    const count: any = await db.get('SELECT COUNT(*) as count FROM kids WHERE parent_id = ?', parentId);
+    const count = db.prepare('SELECT COUNT(*) as count FROM kids WHERE parent_id = ?').get(parentId) as any;
     if (count.count >= 5) {
       res.status(400).json({ error: "Maximum 5 kids profiles allowed" });
       return;
     }
 
     const id = crypto.randomUUID();
-    await db.run('INSERT INTO kids (id, parent_id, name, avatar) VALUES (?, ?, ?, ?)', id, parentId, name, avatar);
+    db.prepare('INSERT INTO kids (id, parent_id, name, avatar) VALUES (?, ?, ?, ?)').run(id, parentId, name, avatar);
     res.json({ id, name, avatar });
   });
 
-  app.delete("/api/kids/:id", authMiddleware, async (req, res) => {
+  app.delete("/api/kids/:id", authMiddleware, (req, res) => {
     const parentId = (req as any).user.id;
     const kidId = req.params.id;
 
-    const result = await db.run('DELETE FROM kids WHERE id = ? AND parent_id = ?', kidId, parentId);
+    const result = db.prepare('DELETE FROM kids WHERE id = ? AND parent_id = ?').run(kidId, parentId);
     
-    if (result.changes && result.changes > 0) {
+    if (result.changes > 0) {
       // Also delete related scores
-      await db.run('DELETE FROM scores WHERE kid_id = ?', kidId);
+      db.prepare('DELETE FROM scores WHERE kid_id = ?').run(kidId);
       res.json({ success: true });
     } else {
       res.status(404).json({ error: "Kid not found" });
@@ -191,25 +187,25 @@ async function startServer() {
   });
 
   // Scores Routes
-  app.get("/api/scores", authMiddleware, async (req, res) => {
+  app.get("/api/scores", authMiddleware, (req, res) => {
     const parentId = (req as any).user.id;
     
     // Get scores for all kids belonging to this parent, ordered by date desc
-    const scores = await db.all(`
+    const scores = db.prepare(`
       SELECT scores.* FROM scores 
       JOIN kids ON scores.kid_id = kids.id 
       WHERE kids.parent_id = ? 
       ORDER BY scores.date DESC LIMIT 100
-    `, parentId);
+    `).all(parentId);
     res.json(scores);
   });
 
-  app.post("/api/scores", authMiddleware, async (req, res) => {
+  app.post("/api/scores", authMiddleware, (req, res) => {
     const parentId = (req as any).user.id;
     const { kidId, subject, difficulty, score, total } = req.body;
 
     // Verify the kid belongs to this parent
-    const kid = await db.get('SELECT id FROM kids WHERE id = ? AND parent_id = ?', kidId, parentId);
+    const kid = db.prepare('SELECT id FROM kids WHERE id = ? AND parent_id = ?').get(kidId, parentId);
     if (!kid) {
       res.status(404).json({ error: "Kid not found" });
       return;
@@ -218,13 +214,13 @@ async function startServer() {
     const id = crypto.randomUUID();
     const date = new Date().toISOString();
     
-    await db.run('INSERT INTO scores (id, kid_id, subject, difficulty, score, total, date) VALUES (?, ?, ?, ?, ?, ?, ?)', id, kidId, subject, difficulty, score, total, date);
+    db.prepare('INSERT INTO scores (id, kid_id, subject, difficulty, score, total, date) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, kidId, subject, difficulty, score, total, date);
     
     res.json({ id, kidId, subject, difficulty, score, total, date });
   });
 
   // Story Mode Routes
-  app.get("/api/story/progress", authMiddleware, async (req, res) => {
+  app.get("/api/story/progress", authMiddleware, (req, res) => {
     const parentId = (req as any).user.id;
     const kidId = req.query.kidId as string | undefined;
     if (!kidId) {
@@ -232,17 +228,17 @@ async function startServer() {
       return;
     }
 
-    const kid = await db.get('SELECT id FROM kids WHERE id = ? AND parent_id = ?', kidId, parentId);
+    const kid = db.prepare('SELECT id FROM kids WHERE id = ? AND parent_id = ?').get(kidId, parentId);
     if (!kid) {
       res.status(404).json({ error: "Kid not found" });
       return;
     }
 
-    const rows = await db.all('SELECT kid_id, subject, unlocked_level, last_completed_level, total_stars, updated_at FROM story_progress WHERE kid_id = ?', kidId);
+    const rows = db.prepare('SELECT kid_id, subject, unlocked_level, last_completed_level, total_stars, updated_at FROM story_progress WHERE kid_id = ?').all(kidId);
     res.json(rows);
   });
 
-  app.post("/api/story/complete", authMiddleware, async (req, res) => {
+  app.post("/api/story/complete", authMiddleware, (req, res) => {
     const parentId = (req as any).user.id;
     const { kidId, subject, level, stars } = req.body as { kidId?: string; subject?: string; level?: number; stars?: number };
 
@@ -263,18 +259,16 @@ async function startServer() {
       return;
     }
 
-    const kid = await db.get('SELECT id FROM kids WHERE id = ? AND parent_id = ?', kidId, parentId);
+    const kid = db.prepare('SELECT id FROM kids WHERE id = ? AND parent_id = ?').get(kidId, parentId);
     if (!kid) {
       res.status(404).json({ error: "Kid not found" });
       return;
     }
 
     const now = new Date().toISOString();
-    const existing = await db.get(
-      'SELECT unlocked_level, last_completed_level, total_stars FROM story_progress WHERE kid_id = ? AND subject = ?',
-      kidId,
-      subject
-    ) as { unlocked_level?: number; last_completed_level?: number; total_stars?: number } | undefined;
+    const existing = db.prepare(
+      'SELECT unlocked_level, last_completed_level, total_stars FROM story_progress WHERE kid_id = ? AND subject = ?'
+    ).get(kidId, subject) as { unlocked_level?: number; last_completed_level?: number; total_stars?: number } | undefined;
 
     const prevUnlocked = existing?.unlocked_level ?? 1;
     const prevCompleted = existing?.last_completed_level ?? 0;
@@ -284,7 +278,7 @@ async function startServer() {
     const newUnlocked = Math.max(prevUnlocked, level + 1);
     const newTotalStars = prevStars + stars;
 
-    await db.run(
+    db.prepare(
       `
       INSERT INTO story_progress (kid_id, subject, unlocked_level, last_completed_level, total_stars, updated_at)
       VALUES (?, ?, ?, ?, ?, ?)
@@ -293,16 +287,10 @@ async function startServer() {
         last_completed_level = excluded.last_completed_level,
         total_stars = excluded.total_stars,
         updated_at = excluded.updated_at
-      `,
-      kidId,
-      subject,
-      newUnlocked,
-      newCompleted,
-      newTotalStars,
-      now
-    );
+      `
+    ).run(kidId, subject, newUnlocked, newCompleted, newTotalStars, now);
 
-    const row = await db.get('SELECT kid_id, subject, unlocked_level, last_completed_level, total_stars, updated_at FROM story_progress WHERE kid_id = ? AND subject = ?', kidId, subject);
+    const row = db.prepare('SELECT kid_id, subject, unlocked_level, last_completed_level, total_stars, updated_at FROM story_progress WHERE kid_id = ? AND subject = ?').get(kidId, subject);
     res.json(row);
   });
 
