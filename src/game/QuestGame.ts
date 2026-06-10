@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { Subject } from '../store/useAppStore';
+import { playSound } from '../lib/audio';
 
 export type QuestNpcId = Subject;
 
@@ -415,6 +416,7 @@ class WorldScene extends Phaser.Scene {
         if (!this.transitioning) {
           this.transitioning = true;
           this.player.body.setEnable(false);
+          playSound('portal');
           this.cameras.main.fadeOut(500, 92, 76, 229);
           this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
             this.scene.restart({ level: this.currentLevel + 1 });
@@ -485,6 +487,7 @@ class WorldScene extends Phaser.Scene {
       body.setVelocity(0, 0);
       body.setAcceleration(0, 0);
       this.cameras.main.flash(500, 255, 0, 0);
+      playSound('error');
     }
 
     // Hide portal hint if player walks away
@@ -528,6 +531,7 @@ class WorldScene extends Phaser.Scene {
       body.setVelocityY(-this.jumpSpeed);
       this.jumpCount += 1;
       this.lastJumpPressedAt = 0; // consume buffer
+      playSound('jump');
     }
 
     // Variable jump height: if you release early, cut upward velocity.
@@ -549,6 +553,7 @@ class WorldScene extends Phaser.Scene {
 
     if (this.nearNpc && Phaser.Input.Keyboard.JustDown(this.keyE)) {
       this.options.onNpcInteract({ npcId: this.nearNpc });
+      playSound('dialog');
     }
   }
 
