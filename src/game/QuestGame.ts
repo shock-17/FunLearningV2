@@ -376,19 +376,24 @@ class WorldScene extends Phaser.Scene {
     const portalX = portPlatX + portPlatW * 0.5;
     const portalY = (portPlatY - 15) - 32; // sit on top of platform surface
     const portalSprite = this.add.sprite(portalX, portalY, 'tex_portal');
+    portalSprite.setScale(0.75);
     this.physics.add.existing(portalSprite, true);
+    // Resize the physics body to match the scaled sprite
+    const pb = portalSprite.body as Phaser.Physics.Arcade.StaticBody;
+    pb.setSize(portalSprite.width * 0.75, portalSprite.height * 0.75);
+    pb.setOffset(portalSprite.width * 0.125, portalSprite.height * 0.125);
     portalSprite.setDepth(4);
 
     // Add a "Next Level" label above the portal
-    this.add.text(portalX, portalY - 50, 'Portal', {
+    this.add.text(portalX, portalY - 40, 'Portal', {
       fontFamily: 'system-ui', fontSize: '14px', fontStyle: '700', color: '#7c3aed',
     }).setOrigin(0.5, 1);
 
     // Swirling pulse animation
     this.tweens.add({
       targets: portalSprite,
-      scaleX: 1.15,
-      scaleY: 1.15,
+      scaleX: 0.86,
+      scaleY: 0.86,
       alpha: 0.8,
       duration: 1000,
       yoyo: true,
