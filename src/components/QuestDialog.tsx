@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Subject, Difficulty } from '../store/useAppStore';
 import { getQuestions, Question } from '../data/questions';
+import { playSound } from '../lib/audio';
 import { Card } from './Card';
 import { Button } from './Button';
 import { XCircle, MessageCircle, CheckCircle2, XCircle as XIcon } from 'lucide-react';
@@ -47,6 +48,7 @@ export function QuestDialog({
     setSelected(opt);
     setIsCorrect(ok);
     if (ok) setScore((s) => s + 1);
+    playSound(ok ? 'success' : 'error');
   };
 
   const next = () => {
