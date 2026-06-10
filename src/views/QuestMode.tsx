@@ -52,11 +52,13 @@ export function QuestMode({ onBack }: { onBack: () => void }) {
         },
       });
       gameRef.current = game;
+      (window as any).__PHASER_GAME__ = game;
     };
 
     mount();
     return () => {
       cancelled = true;
+      (window as any).__PHASER_GAME__ = null;
       try {
         gameRef.current?.destroy?.();
       } catch {
