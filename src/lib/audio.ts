@@ -46,7 +46,7 @@ export function playSound(type: 'success' | 'error' | 'jump' | 'click' | 'portal
     oscillator.frequency.setValueAtTime(180, audioCtx.currentTime);
     oscillator.frequency.exponentialRampToValueAtTime(420, audioCtx.currentTime + 0.12);
     
-    gainNode.gain.setValueAtTime(0.12, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(0.25, audioCtx.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
     
     oscillator.start(audioCtx.currentTime);
